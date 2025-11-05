@@ -1,337 +1,299 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const splitBtn = document.getElementById('splitBtn');
-const levelSpan = document.getElementById('level');
-const livesSpan = document.getElementById('lives');
-const filledSpan = document.getElementById('filled');
+const uiContainer = document.getElementById('ui');
+const levelDisplay = document.getElementById('level');
+const livesDisplay = document.getElementById('lives');
+const filledDisplay = document.getElementById('filled');
 
-const W = canvas.width;
-const H = canvas.height;
-
-let balls = [];
-let walls = [{ x: 0, y: 0, w: W, h: H, fill: true }]; // initial full board
-let splits = [];
-let percentFilled = 0;
-let lives = 3;
+// Game variables
 let level = 1;
-let isSplitting = false;
-let splitData = null;
+let lives = 3;
+let isGameRunning = false;
+let isDrawingLine = false;
 
-function resetLevel() {
-  balls = [];
-  splits = [];
-  isSplitting = false;
-  splitData = null;
-  // place 2 + level balls
-  for (let i = 0; i < 2 + level; i++) {
-    balls.push({
-      x: 60 + Math.random() * 280,
-      y: 60 + Math.random() * 280,
-      r: 8,
-      vx: Math.random() < 0.5 ? 2 : -2,
-      vy: Math.random() < 0.5 ? 2 : -2
-    });
-  }
-  // reset board
-  walls = [{ x: 0, y: 0, w: W, h: H, fill: true }];
-}
+// Ball
+const ball = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  radius: 5,
+  vx: 3,
+  vy: -3
+};
 
-function moveBalls() {
-  for (const b of balls) {
-    b.x += b.vx;
-    b.y += b.vy;
-    // bounce off canvas edges
-    if (b.x - b.r < 0 || b.x + b.r > W) b.vx *= -1;
-    if (b.y - b.r < 0 || b.y + b.r > H) b.vy *= -1;
-  }
-}
+// Paddle
+const paddle = {
+  x: canvas.width / 2 - 40,
+  y: canvas.height - 15,
+  width: 80,
+  height: 10,
+  speed: 6,
+  dx: 0
+};
 
-function splitDirection(x, y) {
-  // determine split direction: horizontal or vertical
-  const dx = Math.min(x, W - x);
-  const dy = Math.min(y, H - y);
-  return dx < dy ? 'horizontal' : 'vertical';
-}
+// Keyboard state
+const keys = {};
 
-function startSplit(x, y) {
-  if (isSplitting) return;
-  const dir = splitDirection(x, y);
-  isSplitting = true;
-  splitData = {
-    x,
-    y,
-    dir,
-    growLeft: 0,
-    growRight: 0,
-    growSpeed: 3,
-    stopped: false
-  };
-}
+// Game state
+const gameState = {
+  lines: [],
+  barriers: [],
+  filledPercentage: 0
+};
 
-function updateSplit() {
-  if (!splitData || splitData.stopped) return;
-  const { dir } = splitData;
-  splitData.growLeft += splitData.growSpeed;
-  splitData.growRight += splitData.growSpeed;
-  // check collision with balls
-  let collision = false;
-  for (const b of balls) {
-    if (dir === 'vertical') {
-      const x = splitData.x;
-      if (
-        b.x + b.r >= x - 2 &&
-        b.x - b.r <= x + 2 &&
-        b.y >= splitData.y - splitData.growLeft &&
-        b.y <= splitData.y + splitData.growRight
-      ) {
-        collision = true;
-        break;
-      }
-    } else {
-      const y = splitData.y;
-      if (
-        b.y + b.r >= y - 2 &&
-        b.y - b.r <= y + 2 &&
-        b.x >= splitData.x - splitData.growLeft &&
-        b.x <= splitData.x + splitData.growRight
-      ) {
-        collision = true;
-        break;
-      }
+// Event listeners for keyboard controls
+document.addEventListener('keydown', (e) => {
+  keys[e.key] = true;
+  
+  // Spacebar to start line/barrier
+  if (e.key === ' ') {
+    e.preventDefault();
+    if (!isGameRunning && lives > 0) {
+      startGame();
+    }
+    if (!isDrawingLine && isGameRunning) {
+      startDrawingLine();
     }
   }
-  if (collision) {
+});
+
+document.addEventListener('keyup', (e) => {
+  keys[e.key] = false;
+  
+  // Release line when key is released
+  if (e.key === ' ' && isDrawingLine) {
+    endDrawingLine();
+  }
+});
+
+// Button click handlers
+document.getElementById('splitBtn').addEventListener('click', () => {
+  if (!isGameRunning && lives > 0) {
+    startGame();
+  } else if (isGameRunning) {
+    if (!isDrawingLine) {
+      startDrawingLine();
+    } else {
+      endDrawingLine();
+    }
+  }
+});
+
+function startGame() {
+  if (!isGameRunning) {
+    isGameRunning = true;
+    ball.x = canvas.width / 2;
+    ball.y = canvas.height / 2;
+    ball.vx = 3 * (Math.random() > 0.5 ? 1 : -1);
+    ball.vy = -3;
+    gameState.lines = [];
+    gameState.barriers = [];
+    gameState.filledPercentage = 0;
+    updateUI();
+    gameLoop();
+  }
+}
+
+function startDrawingLine() {
+  if (!isDrawingLine) {
+    isDrawingLine = true;
+    // Line drawing logic would go here
+  }
+}
+
+function endDrawingLine() {
+  if (isDrawingLine) {
+    isDrawingLine = false;
+    // Finalize line logic would go here
+  }
+}
+
+function gameLoop() {
+  // Update paddle position based on keyboard input
+  if (keys['ArrowLeft'] || keys['a']) {
+    paddle.dx = -paddle.speed;
+  } else if (keys['ArrowRight'] || keys['d']) {
+    paddle.dx = paddle.speed;
+  } else {
+    paddle.dx = 0;
+  }
+  
+  // Update paddle position
+  paddle.x += paddle.dx;
+  
+  // Clamp paddle to canvas boundaries
+  if (paddle.x < 0) paddle.x = 0;
+  if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+  
+  // Update ball position
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+  
+  // Bounce off walls
+  if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+    ball.vx = -ball.vx;
+    ball.x = Math.max(ball.radius, Math.min(canvas.width - ball.radius, ball.x));
+  }
+  
+  if (ball.y - ball.radius < 0) {
+    ball.vy = -ball.vy;
+    ball.y = Math.max(ball.radius, ball.y);
+  }
+  
+  // Bounce off paddle
+  if (checkPaddleCollision()) {
+    ball.vy = -Math.abs(ball.vy);
+    ball.y = paddle.y - ball.radius;
+    // Add some curve based on where the ball hits the paddle
+    const hitPos = (ball.x - (paddle.x + paddle.width / 2)) / (paddle.width / 2);
+    ball.vx += hitPos * 2;
+  }
+  
+  // Check if ball fell below paddle
+  if (ball.y - ball.radius > canvas.height) {
     lives--;
-    livesSpan.textContent = lives;
-    isSplitting = false;
-    splitData = null;
-    if (lives === 0) {
+    updateUI();
+    
+    if (lives <= 0) {
+      isGameRunning = false;
       alert('Game Over! Final Level: ' + level);
-      level = 1;
+      // Reset game
       lives = 3;
-      livesSpan.textContent = lives;
-      levelSpan.textContent = level;
-      resetLevel();
-    }
-    return;
-  }
-  // check if wall reached edges
-  if (dir === 'vertical') {
-    if (
-      splitData.y - splitData.growLeft <= 0 &&
-      splitData.y + splitData.growRight >= H
-    ) {
-      splitData.stopped = true;
-      finalizeSplit();
-    }
-  } else {
-    if (
-      splitData.x - splitData.growLeft <= 0 &&
-      splitData.x + splitData.growRight >= W
-    ) {
-      splitData.stopped = true;
-      finalizeSplit();
-    }
-  }
-}
-
-function finalizeSplit() {
-  const { x, y, dir } = splitData;
-  walls.push({ x, y, dir });
-  isSplitting = false;
-  splitData = null;
-  computeFilled();
-}
-
-function computeFilled() {
-  // simple fill: assume vertical/horizontal walls divide board
-  // measure largest contiguous open area
-  const filledArea = walls.length * 50; // naive
-  percentFilled = Math.min((filledArea / (W * H)) * 100, 75);
-  filledSpan.textContent = Math.floor(percentFilled) + '%';
-  if (percentFilled >= 75) {
-    // next level
-    level++;
-    levelSpan.textContent = level;
-    resetLevel();
-  }
-}
-
-function drawWalls() {
-  ctx.fillStyle = '#fff';
-  for (const w of walls) {
-    if (w.fill) {
-      ctx.fillRect(w.x, w.y, w.w, w.h);
-    } else if (w.dir === 'vertical') {
-      ctx.fillRect(w.x - 2, 0, 4, H);
+      level = 1;
+      gameState.filledPercentage = 0;
+      updateUI();
     } else {
-      ctx.fillRect(0, w.y - 2, W, 4);
+      // Reset ball position
+      ball.x = canvas.width / 2;
+      ball.y = canvas.height / 2;
+      ball.vx = 3 * (Math.random() > 0.5 ? 1 : -1);
+      ball.vy = -3;
     }
   }
+  
+  // Draw everything
+  draw();
+  
+  if (isGameRunning) {
+    requestAnimationFrame(gameLoop);
+  }
 }
 
-function drawSplit() {
-  if (!splitData) return;
+function checkPaddleCollision() {
+  // Check if ball is within paddle's vertical range
+  if (ball.y + ball.radius >= paddle.y && ball.y - ball.radius <= paddle.y + paddle.height) {
+    // Check if ball is within paddle's horizontal range
+    if (ball.x >= paddle.x - ball.radius && ball.x <= paddle.x + paddle.width + ball.radius) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function draw() {
+  // Clear canvas
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw grid/borders
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw paddle
   ctx.fillStyle = '#0f0';
-  const { x, y, dir, growLeft, growRight } = splitData;
-  if (dir === 'vertical') {
-    ctx.fillRect(x - 2, y - growLeft, 4, growLeft + growRight);
-  } else {
-    ctx.fillRect(x - growLeft, y - 2, growLeft + growRight, 4);
-  }
-}
-
-function drawBalls() {
-  ctx.fillStyle = '#f00';
-  for (const b of balls) {
+  ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+  
+  // Draw ball
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Draw any lines/barriers (placeholder)
+  ctx.strokeStyle = '#0f0';
+  ctx.lineWidth = 2;
+  gameState.lines.forEach(line => {
     ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-    ctx.fill();
-  }
+    ctx.moveTo(line.x1, line.y1);
+    ctx.lineTo(line.x2, line.y2);
+    ctx.stroke();
+  });
 }
 
-function gameStep() {
-  moveBalls();
-  updateSplit();
-  ctx.clearRect(0, 0, W, H);
-  drawWalls();
-  drawSplit();
-  drawBalls();
-  requestAnimationFrame(gameStep);
+function updateUI() {
+  levelDisplay.textContent = level;
+  livesDisplay.textContent = lives;
+  filledDisplay.textContent = gameState.filledPercentage + '%';
 }
 
-canvas.addEventListener('click', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  startSplit(mx, my);
-});
+// Initialize UI with instructions
+function initializeUI() {
+  const instructionsDiv = document.createElement('div');
+  instructionsDiv.id = 'instructions';
+  instructionsDiv.innerHTML = `
+    <h3>Controls:</h3>
+    <p><strong>Spacebar:</strong> Start game / Draw line</p>
+    <p><strong>Arrow Left/Right:</strong> Move paddle (or A/D keys)</p>
+    <p><strong>Button:</strong> Start Line (alternative to spacebar)</p>
+  `;
+  uiContainer.appendChild(instructionsDiv);
+}
 
-splitBtn.addEventListener('click', () => {
-  startSplit(W / 2, H / 2);
-});
+// Farcaster Integration
+let currentScore = 0;
 
-resetLevel();
-livesSpan.textContent = lives;
-levelSpan.textContent = level;
-gameStep();
-
-/* ============================================ */
-/* FARCASTER INTEGRATION                      */
-/* ============================================ */
-
-// Get modal elements
 const shareBtn = document.getElementById('shareBtn');
-const modal = document.getElementById('farcaster-modal');
+const farcasterModal = document.getElementById('farcaster-modal');
 const closeModal = document.getElementById('closeModal');
 const cancelBtn = document.getElementById('cancelBtn');
 const confirmShareBtn = document.getElementById('confirmShareBtn');
 const shareMessage = document.getElementById('shareMessage');
 const scoreDisplay = document.getElementById('scoreDisplay');
 
-// Function to calculate current score
-function calculateScore() {
-  return level * 100 + Math.floor(percentFilled * 10);
-}
-
-// Open modal when share button is clicked
 shareBtn.addEventListener('click', () => {
-  const currentScore = calculateScore();
+  currentScore = level * 100 + (lives * 50);
   scoreDisplay.textContent = currentScore;
-  shareMessage.value = `I just played JezzBall Clone! 🎮\n\nLevel: ${level}\nFilled: ${Math.floor(percentFilled)}%\nScore: ${currentScore}\n\nPlay now: ${window.location.href}`;
-  modal.style.display = 'block';
+  farcasterModal.style.display = 'block';
 });
 
-// Close modal when X is clicked
 closeModal.addEventListener('click', () => {
-  modal.style.display = 'none';
+  farcasterModal.style.display = 'none';
 });
 
-// Close modal when cancel button is clicked
 cancelBtn.addEventListener('click', () => {
-  modal.style.display = 'none';
+  farcasterModal.style.display = 'none';
 });
 
-// Close modal when clicking outside of it
-window.addEventListener('click', (e) => {
-  if (e.target === modal) {
-    modal.style.display = 'none';
-  }
-});
-
-// Share to Farcaster function
 confirmShareBtn.addEventListener('click', async () => {
-  const message = shareMessage.value;
-  const currentScore = calculateScore();
-  
+  const message = shareMessage.value || 'I just played JezzBall Clone!';
   try {
-    // Method 1: Using Warpcast intent URL (recommended for simplicity)
-    const encodedMessage = encodeURIComponent(message);
-    const warpcastUrl = `https://warpcast.com/~/compose?text=${encodedMessage}`;
-    
-    // Open in new window
-    window.open(warpcastUrl, '_blank');
-    
-    // Optional: Log the share event
-    console.log('Shared to Farcaster:', {
-      level: level,
-      percentFilled: percentFilled,
-      score: currentScore,
-      message: message
+    const response = await fetch('https://warpcast.com/~/compose', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        text: `${message}\n\nScore: ${currentScore}\nLevel: ${level}\n\nPlay JezzBall Clone: ${window.location.href}`
+      })
     });
-    
-    // Show success message
-    alert('Opening Warpcast to share your achievement!');
-    
-    // Close modal
-    modal.style.display = 'none';
-    
+    if (response.ok) {
+      alert('Shared successfully!');
+      farcasterModal.style.display = 'none';
+      shareMessage.value = '';
+    } else {
+      alert('Failed to share. Please try again.');
+    }
   } catch (error) {
-    console.error('Error sharing to Farcaster:', error);
+    console.error('Error:', error);
     alert('Failed to share. Please try again.');
   }
 });
 
-// Alternative Method: Direct Farcaster API integration (requires authentication)
-// Uncomment and configure if you want to use the Farcaster API directly
-
-/*
-async function shareToFarcasterAPI(message) {
-  const FARCASTER_API_URL = 'https://api.farcaster.xyz/v2/casts';
-  const YOUR_API_KEY = 'YOUR_FARCASTER_API_KEY_HERE';
-  
-  try {
-    const response = await fetch(FARCASTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${YOUR_API_KEY}`
-      },
-      body: JSON.stringify({
-        text: message,
-        embeds: [
-          {
-            url: window.location.href
-          }
-        ]
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to post to Farcaster');
-    }
-    
-    const data = await response.json();
-    console.log('Successfully posted to Farcaster:', data);
-    return data;
-    
-  } catch (error) {
-    console.error('Farcaster API error:', error);
-    throw error;
+// Close modal when clicking outside of it
+window.addEventListener('click', (event) => {
+  if (event.target === farcasterModal) {
+    farcasterModal.style.display = 'none';
   }
-}
-*/
+});
 
-/* ============================================ */
-/* END OF FARCASTER INTEGRATION               */
-/* ============================================ */
+// Initialize the game
+initializeUI();
+updateUI();
