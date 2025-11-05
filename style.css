@@ -1,0 +1,32 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #222;
+  color: #fff;
+  text-align: center;
+}
+
+canvas {
+  background: #111;
+  border: 2px solid #444;
+  display: block;
+  margin: 20px auto;
+}
+
+#ui {
+  margin-bottom: 20px;
+}
+
+#splitBtn {
+  margin-right: 20px;
+  padding: 8px 16px;
+  font-size: 1rem;
+  background: #3366cc;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#splitBtn:hover {
+  background: #2255aa;
+}
