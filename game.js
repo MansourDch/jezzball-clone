@@ -4,8 +4,10 @@ const splitBtn = document.getElementById('splitBtn');
 const levelSpan = document.getElementById('level');
 const livesSpan = document.getElementById('lives');
 const filledSpan = document.getElementById('filled');
+
 const W = canvas.width;
 const H = canvas.height;
+
 let balls = [];
 let walls = [{ x: 0, y: 0, w: W, h: H, fill: true }]; // initial full board
 let splits = [];
@@ -34,223 +36,179 @@ function resetLevel() {
   walls = [{ x: 0, y: 0, w: W, h: H, fill: true }];
 }
 
-function draw() {
-  ctx.fillStyle = '#111';
-  ctx.fillRect(0, 0, W, H);
-
-  // draw walls
-  ctx.fillStyle = '#999';
-  for (let wall of walls) {
-    if (!wall.fill) continue;
-    ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+function moveBalls() {
+  for (const b of balls) {
+    b.x += b.vx;
+    b.y += b.vy;
+    // bounce off canvas edges
+    if (b.x - b.r < 0 || b.x + b.r > W) b.vx *= -1;
+    if (b.y - b.r < 0 || b.y + b.r > H) b.vy *= -1;
   }
+}
 
-  // draw split lines
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 2;
-  for (let split of splits) {
-    ctx.beginPath();
-    if (split.dir === 'h') {
-      ctx.moveTo(split.x1, split.y);
-      ctx.lineTo(split.x2, split.y);
+function splitDirection(x, y) {
+  // determine split direction: horizontal or vertical
+  const dx = Math.min(x, W - x);
+  const dy = Math.min(y, H - y);
+  return dx < dy ? 'horizontal' : 'vertical';
+}
+
+function startSplit(x, y) {
+  if (isSplitting) return;
+  const dir = splitDirection(x, y);
+  isSplitting = true;
+  splitData = {
+    x,
+    y,
+    dir,
+    growLeft: 0,
+    growRight: 0,
+    growSpeed: 3,
+    stopped: false
+  };
+}
+
+function updateSplit() {
+  if (!splitData || splitData.stopped) return;
+  const { dir } = splitData;
+  splitData.growLeft += splitData.growSpeed;
+  splitData.growRight += splitData.growSpeed;
+  // check collision with balls
+  let collision = false;
+  for (const b of balls) {
+    if (dir === 'vertical') {
+      const x = splitData.x;
+      if (
+        b.x + b.r >= x - 2 &&
+        b.x - b.r <= x + 2 &&
+        b.y >= splitData.y - splitData.growLeft &&
+        b.y <= splitData.y + splitData.growRight
+      ) {
+        collision = true;
+        break;
+      }
     } else {
-      ctx.moveTo(split.x, split.y1);
-      ctx.lineTo(split.x, split.y2);
-    }
-    ctx.stroke();
-  }
-
-  // draw split construction line
-  if (isSplitting && splitData) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    if (splitData.dir === 'h') {
-      ctx.moveTo(0, splitData.y);
-      ctx.lineTo(W, splitData.y);
-    } else {
-      ctx.moveTo(splitData.x, 0);
-      ctx.lineTo(splitData.x, H);
-    }
-    ctx.stroke();
-  }
-
-  // draw balls
-  ctx.fillStyle = '#f00';
-  for (let ball of balls) {
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, 2 * Math.PI);
-    ctx.fill();
-  }
-}
-
-function updateBalls() {
-  for (let ball of balls) {
-    ball.x += ball.vx;
-    ball.y += ball.vy;
-
-    // check collisions with splits
-    for (let split of splits) {
-      if (split.dir === 'h') {
-        if (
-          Math.abs(ball.y - split.y) < ball.r &&
-          ball.x >= split.x1 &&
-          ball.x <= split.x2
-        ) {
-          ball.vy = -ball.vy;
-        }
-      } else {
-        if (
-          Math.abs(ball.x - split.x) < ball.r &&
-          ball.y >= split.y1 &&
-          ball.y <= split.y2
-        ) {
-          ball.vx = -ball.vx;
-        }
+      const y = splitData.y;
+      if (
+        b.y + b.r >= y - 2 &&
+        b.y - b.r <= y + 2 &&
+        b.x >= splitData.x - splitData.growLeft &&
+        b.x <= splitData.x + splitData.growRight
+      ) {
+        collision = true;
+        break;
       }
     }
-
-    // check collisions with walls
-    for (let wall of walls) {
-      if (!wall.fill) continue;
-
-      if (ball.x - ball.r < wall.x) {
-        ball.x = wall.x + ball.r;
-        ball.vx = -ball.vx;
-      }
-      if (ball.x + ball.r > wall.x + wall.w) {
-        ball.x = wall.x + wall.w - ball.r;
-        ball.vx = -ball.vx;
-      }
-      if (ball.y - ball.r < wall.y) {
-        ball.y = wall.y + ball.r;
-        ball.vy = -ball.vy;
-      }
-      if (ball.y + ball.r > wall.y + wall.h) {
-        ball.y = wall.y + wall.h - ball.r;
-        ball.vy = -ball.vy;
-      }
+  }
+  if (collision) {
+    lives--;
+    livesSpan.textContent = lives;
+    isSplitting = false;
+    splitData = null;
+    if (lives === 0) {
+      alert('Game Over! Final Level: ' + level);
+      level = 1;
+      lives = 3;
+      livesSpan.textContent = lives;
+      levelSpan.textContent = level;
+      resetLevel();
+    }
+    return;
+  }
+  // check if wall reached edges
+  if (dir === 'vertical') {
+    if (
+      splitData.y - splitData.growLeft <= 0 &&
+      splitData.y + splitData.growRight >= H
+    ) {
+      splitData.stopped = true;
+      finalizeSplit();
+    }
+  } else {
+    if (
+      splitData.x - splitData.growLeft <= 0 &&
+      splitData.x + splitData.growRight >= W
+    ) {
+      splitData.stopped = true;
+      finalizeSplit();
     }
   }
 }
 
-function percentArea() {
-  let totalArea = W * H;
-  let filledArea = 0;
-  for (let wall of walls) {
-    if (wall.fill) filledArea += wall.w * wall.h;
-  }
-  return Math.floor((filledArea / totalArea) * 100);
+function finalizeSplit() {
+  const { x, y, dir } = splitData;
+  walls.push({ x, y, dir });
+  isSplitting = false;
+  splitData = null;
+  computeFilled();
 }
 
-function splitBoard(pos, dir) {
-  let newWalls = [];
-  for (let wall of walls) {
-    if (!wall.fill) {
-      newWalls.push(wall);
-      continue;
-    }
-    if (dir === 'h') {
-      if (pos > wall.y && pos < wall.y + wall.h) {
-        newWalls.push({
-          x: wall.x,
-          y: wall.y,
-          w: wall.w,
-          h: pos - wall.y,
-          fill: true
-        });
-        newWalls.push({
-          x: wall.x,
-          y: pos,
-          w: wall.w,
-          h: wall.y + wall.h - pos,
-          fill: true
-        });
-        newWalls.push({
-          x: wall.x,
-          y: pos - 1,
-          w: wall.w,
-          h: 2,
-          fill: false
-        });
-      } else newWalls.push(wall);
-    } else {
-      if (pos > wall.x && pos < wall.x + wall.w) {
-        newWalls.push({
-          x: wall.x,
-          y: wall.y,
-          w: pos - wall.x,
-          h: wall.h,
-          fill: true
-        });
-        newWalls.push({
-          x: pos,
-          y: wall.y,
-          w: wall.x + wall.w - pos,
-          h: wall.h,
-          fill: true
-        });
-        newWalls.push({
-          x: pos - 1,
-          y: wall.y,
-          w: 2,
-          h: wall.h,
-          fill: false
-        });
-      } else newWalls.push(wall);
-    }
-  }
-  walls = newWalls;
-}
-
-function gameStep() {
-  updateBalls();
-  draw();
-  percentFilled = percentArea();
-  filledSpan.textContent = percentFilled + '%';
+function computeFilled() {
+  // simple fill: assume vertical/horizontal walls divide board
+  // measure largest contiguous open area
+  const filledArea = walls.length * 50; // naive
+  percentFilled = Math.min((filledArea / (W * H)) * 100, 75);
+  filledSpan.textContent = Math.floor(percentFilled) + '%';
   if (percentFilled >= 75) {
+    // next level
     level++;
     levelSpan.textContent = level;
     resetLevel();
   }
+}
+
+function drawWalls() {
+  ctx.fillStyle = '#fff';
+  for (const w of walls) {
+    if (w.fill) {
+      ctx.fillRect(w.x, w.y, w.w, w.h);
+    } else if (w.dir === 'vertical') {
+      ctx.fillRect(w.x - 2, 0, 4, H);
+    } else {
+      ctx.fillRect(0, w.y - 2, W, 4);
+    }
+  }
+}
+
+function drawSplit() {
+  if (!splitData) return;
+  ctx.fillStyle = '#0f0';
+  const { x, y, dir, growLeft, growRight } = splitData;
+  if (dir === 'vertical') {
+    ctx.fillRect(x - 2, y - growLeft, 4, growLeft + growRight);
+  } else {
+    ctx.fillRect(x - growLeft, y - 2, growLeft + growRight, 4);
+  }
+}
+
+function drawBalls() {
+  ctx.fillStyle = '#f00';
+  for (const b of balls) {
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function gameStep() {
+  moveBalls();
+  updateSplit();
+  ctx.clearRect(0, 0, W, H);
+  drawWalls();
+  drawSplit();
+  drawBalls();
   requestAnimationFrame(gameStep);
 }
 
-canvas.addEventListener('mousedown', function (e) {
-  if (isSplitting) return;
-  let rect = canvas.getBoundingClientRect();
-  let x = Math.round(e.clientX - rect.left);
-  let y = Math.round(e.clientY - rect.top);
-  // Alternate split direction by click or button
-  let dir =
-    Math.abs(x - W / 2) > Math.abs(y - H / 2) ? 'h' : 'v';
-  splitData = { x, y, dir };
-  isSplitting = true;
-  setTimeout(() => {
-    splitBoard(dir === 'h' ? y : x, dir);
-    percentFilled = percentArea();
-    if (percentFilled >= 100) {
-      level++;
-      resetLevel();
-    }
-    isSplitting = false;
-    splitData = null;
-  }, 700);
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  startSplit(mx, my);
 });
 
 splitBtn.addEventListener('click', () => {
-  // alternate split: horizontal/vertical
-  isSplitting = true;
-  splitData = {
-    x: W / 2,
-    y: H / 2,
-    dir: Math.random() < 0.5 ? 'h' : 'v'
-  };
-  setTimeout(() => {
-    splitBoard(splitData.dir === 'h' ? splitData.y : splitData.x, splitData.dir);
-    isSplitting = false;
-    splitData = null;
-  }, 400);
+  startSplit(W / 2, H / 2);
 });
 
 resetLevel();
@@ -259,46 +217,121 @@ levelSpan.textContent = level;
 gameStep();
 
 /* ============================================ */
-/* OPTIONAL WEB3 HOOKS FOR FUTURE INTEGRATION */
+/* FARCASTER INTEGRATION                      */
 /* ============================================ */
 
-// Hook 1: Mint a Memory NFT
-// This function can be called when a player completes a level
-// to mint a commemorative NFT of their achievement.
-// Example integration:
-// function mintMemoryNFT(level, score) {
-//   // Connect to wallet (e.g., ethers.js or wagmi)
-//   // Call smart contract to mint NFT
-//   // Pass game metadata: level completed, time taken, score
-//   console.log('Minting NFT for level:', level);
-// }
+// Get modal elements
+const shareBtn = document.getElementById('shareBtn');
+const modal = document.getElementById('farcaster-modal');
+const closeModal = document.getElementById('closeModal');
+const cancelBtn = document.getElementById('cancelBtn');
+const confirmShareBtn = document.getElementById('confirmShareBtn');
+const shareMessage = document.getElementById('shareMessage');
+const scoreDisplay = document.getElementById('scoreDisplay');
 
-// Hook 2: Share on Farcaster
-// This function can be called to allow players to share their
-// gameplay achievements on the Farcaster social platform.
-// Example integration:
-// function shareOnFarcaster(level, message) {
-//   // Use Farcaster API to post a frame or cast
-//   // Include game screenshot or stats
-//   // Embed a playable frame link if supported
-//   console.log('Sharing on Farcaster:', message);
-// }
+// Function to calculate current score
+function calculateScore() {
+  return level * 100 + Math.floor(percentFilled * 10);
+}
 
-// Hook 3: Track Gameplay Events
-// Optional callback for analytics or blockchain event logging
-// Example integration:
-// function trackGameEvent(eventType, eventData) {
-//   // Send to analytics service (e.g., Mixpanel, Segment)
-//   // Or log to blockchain contract for permanent record
-//   // Event types: 'level_completed', 'nft_minted', 'shared_socially'
-//   console.log('Game event:', eventType, eventData);
-// }
+// Open modal when share button is clicked
+shareBtn.addEventListener('click', () => {
+  const currentScore = calculateScore();
+  scoreDisplay.textContent = currentScore;
+  shareMessage.value = `I just played JezzBall Clone! 🎮\n\nLevel: ${level}\nFilled: ${Math.floor(percentFilled)}%\nScore: ${currentScore}\n\nPlay now: ${window.location.href}`;
+  modal.style.display = 'block';
+});
 
-// Potential hook locations in existing code:
-// - After level completion: mintMemoryNFT(level, percentFilled);
-// - On share button click: shareOnFarcaster(level, 'I just completed level ' + level);
-// - On game event: trackGameEvent('level_completed', { level, time: Date.now() });
+// Close modal when X is clicked
+closeModal.addEventListener('click', () => {
+  modal.style.display = 'none';
+});
+
+// Close modal when cancel button is clicked
+cancelBtn.addEventListener('click', () => {
+  modal.style.display = 'none';
+});
+
+// Close modal when clicking outside of it
+window.addEventListener('click', (e) => {
+  if (e.target === modal) {
+    modal.style.display = 'none';
+  }
+});
+
+// Share to Farcaster function
+confirmShareBtn.addEventListener('click', async () => {
+  const message = shareMessage.value;
+  const currentScore = calculateScore();
+  
+  try {
+    // Method 1: Using Warpcast intent URL (recommended for simplicity)
+    const encodedMessage = encodeURIComponent(message);
+    const warpcastUrl = `https://warpcast.com/~/compose?text=${encodedMessage}`;
+    
+    // Open in new window
+    window.open(warpcastUrl, '_blank');
+    
+    // Optional: Log the share event
+    console.log('Shared to Farcaster:', {
+      level: level,
+      percentFilled: percentFilled,
+      score: currentScore,
+      message: message
+    });
+    
+    // Show success message
+    alert('Opening Warpcast to share your achievement!');
+    
+    // Close modal
+    modal.style.display = 'none';
+    
+  } catch (error) {
+    console.error('Error sharing to Farcaster:', error);
+    alert('Failed to share. Please try again.');
+  }
+});
+
+// Alternative Method: Direct Farcaster API integration (requires authentication)
+// Uncomment and configure if you want to use the Farcaster API directly
+
+/*
+async function shareToFarcasterAPI(message) {
+  const FARCASTER_API_URL = 'https://api.farcaster.xyz/v2/casts';
+  const YOUR_API_KEY = 'YOUR_FARCASTER_API_KEY_HERE';
+  
+  try {
+    const response = await fetch(FARCASTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${YOUR_API_KEY}`
+      },
+      body: JSON.stringify({
+        text: message,
+        embeds: [
+          {
+            url: window.location.href
+          }
+        ]
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to post to Farcaster');
+    }
+    
+    const data = await response.json();
+    console.log('Successfully posted to Farcaster:', data);
+    return data;
+    
+  } catch (error) {
+    console.error('Farcaster API error:', error);
+    throw error;
+  }
+}
+*/
 
 /* ============================================ */
-/* END OF WEB3 HOOKS SECTION */
+/* END OF FARCASTER INTEGRATION               */
 /* ============================================ */
