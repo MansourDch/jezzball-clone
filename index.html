@@ -1,50 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JezzBall Clone</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+    <title>JezzBall Clone</title>
+    <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
   <!-- Nostalgic Banner Message -->
-  <div id="nostalgic-banner" class="nostalgic-banner">
-    <h2>Play and go back in time. Remember those beautiful days: slow internet, patient people—take it easy and play.</h2>
+  <div class="nostalgic-banner" id="nostalgic-banner">
+    Play and go back in time. Remember those beautiful days: slow internet, patient people—take it easy and play.
   </div>
 
-  <h1>JezzBall Clone</h1>
-  
-  <!-- Game Canvas -->
-  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <!-- Header -->
+  <header class="game-header">
+    <h1>JezzBall Clone</h1>
+  </header>
 
-  <!-- Game UI -->
-  <div id="ui">
-    <button id="splitBtn">Start Line</button>
-    <span>Level: <span id="level">1</span></span>
-    <span>Lives: <span id="lives">3</span></span>
-    <span>Filled: <span id="filled">0%</span></span>
+  <!-- Game Container -->
+  <div class="game-container">
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas" width="400" height="400" class="game-canvas"></canvas>
+
+    <!-- Game UI -->
+    <div id="ui" class="game-ui">
+      <button id="splitBtn" class="btn-primary">Start Line</button>
+      <div class="stats-container">
+        <span class="stat-item">Level: <span id="level">1</span></span>
+        <span class="stat-item">Lives: <span id="lives">3</span></span>
+        <span class="stat-item">Filled: <span id="filled">0%</span></span>
+      </div>
+    </div>
+
+    <!-- Touch Controls Info -->
+    <div class="touch-info" id="touchInfo">
+      <p><strong>Touch Controls:</strong></p>
+      <ul>
+        <li>Drag to move paddle</li>
+        <li>Tap "Start Line" to draw</li>
+        <li>Double-tap to pause</li>
+      </ul>
+    </div>
   </div>
 
   <!-- Control Instructions -->
-  <div id="instructions" class="instructions">
+  <div class="instructions" id="instructions">
     <h3>Controls</h3>
     <ul>
-      <li><strong>Spacebar:</strong> Start game / Draw line</li>
-      <li><strong>Left Arrow or A:</strong> Move paddle left</li>
-      <li><strong>Right Arrow or D:</strong> Move paddle right</li>
-      <li><strong>Button Click:</strong> Start Line (alternative to spacebar)</li>
+      <li><strong>Desktop:</strong> Spacebar to draw line, Arrow keys to move paddle</li>
+      <li><strong>Mobile:</strong> Tap to draw, drag to move paddle</li>
+      <li><strong>Button:</strong> Tap "Start Line" button</li>
     </ul>
     <p><strong>Objective:</strong> Keep the ball bouncing with the paddle and fill the screen while clearing enemies. Each life lost when the ball falls below the paddle.</p>
   </div>
 
-  <!-- Optional Web3 Placeholder Buttons -->
-  <div id="web3-section" class="web3-section">
-    <button id="mintBtn" class="placeholder-btn" disabled title="Coming soon">Mint a Memory NFT (optional)</button>
-    <button id="shareBtn" class="web3-btn" title="Share your score on Farcaster">Share on Farcaster (optional)</button>
+  <!-- Optional Web3 Section -->
+  <div class="web3-section" id="web3-section">
+    <button class="placeholder-btn" id="mintBtn" disabled title="Coming soon">Mint a Memory NFT (optional)</button>
+    <button class="web3-btn" id="shareBtn" title="Share your score on Farcaster">Share on Farcaster (optional)</button>
   </div>
 
   <!-- Farcaster Share Modal -->
-  <div id="farcaster-modal" class="modal">
+  <div class="modal" id="farcaster-modal">
     <div class="modal-content">
       <span class="close-btn" id="closeModal">×</span>
       <h2>Share on Farcaster</h2>
@@ -61,6 +78,11 @@
       </div>
     </div>
   </div>
+
+  <!-- Audio Element for Background Music -->
+  <audio id="backgroundMusic" loop preload="auto" style="display: none;">
+    <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav"/>
+  </audio>
 
   <script src="game.js"></script>
 </body>
