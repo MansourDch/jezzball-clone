@@ -16,35 +16,29 @@ const confirmShareBtn = document.getElementById('confirmShareBtn');
 const shareMessage = document.getElementById('shareMessage');
 const scoreDisplay = document.getElementById('scoreDisplay');
 const music = document.getElementById('backgroundMusic');
-
 // Game Variables
 let level = 1;
 let lives = 3;
 let filledPercent = 0;
 let currentScore = 0;
-
-let paddle = { x: 170, width: 60, y: 390 };
-let ball = { x: 200, y: 200, radius: 13, vx: 4, vy: -4 };
-let ballRadius = 13;
-
+let paddle = { x: 85, width: 30, y: 195 };
+let ball = { x: 100, y: 100, radius: 6.5, vx: 4, vy: -4 };
+let ballRadius = 6.5;
 let dragging = false;
 let dragStartX = 0;
 let isDrawingLine = false;
 let lineStart = null;
 let gamePaused = false;
 let gameRunning = true;
-
 function updateUI() {
   levelDisplay.textContent = level;
   livesDisplay.textContent = lives;
   filledDisplay.textContent = `${filledPercent}%`;
   scoreDisplay.textContent = currentScore;
 }
-
 function initializeUI() {
   splitBtn.addEventListener('click', () => { startLine(); });
 }
-
 // --- Mobile Touch Events ---
 function handleTouchStart(e) {
   if (e.touches.length === 1) {
@@ -56,12 +50,11 @@ function handleTouchStart(e) {
       dragStartX = tx - paddle.x;
     }
     // Detect tap on top for line draw
-    if (e.touches[0].clientY < canvas.offsetTop + 120) {
+    if (e.touches[0].clientY < canvas.offsetTop + 60) {
       if (!isDrawingLine) startLine();
     }
   }
 }
-
 function handleTouchMove(e) {
   if (dragging) {
     const { left } = canvas.getBoundingClientRect();
@@ -69,15 +62,12 @@ function handleTouchMove(e) {
     paddle.x = Math.max(0, Math.min(canvas.width - paddle.width, tx - dragStartX));
   }
 }
-
 function handleTouchEnd(e) {
   dragging = false;
 }
-
 canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
 canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
 canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
-
 // --- Desktop Controls ---
 document.addEventListener('keydown', e => {
   if (gamePaused) return;
@@ -90,33 +80,27 @@ document.addEventListener('keydown', e => {
     case 'KeyP': gamePaused = !gamePaused; break;
   }
 });
-
 canvas.addEventListener('mousedown', e => {
   if (e.offsetY >= paddle.y && e.offsetX >= paddle.x && e.offsetX <= paddle.x + paddle.width) {
     dragging = true;
     dragStartX = e.offsetX - paddle.x;
   }
 });
-
 canvas.addEventListener('mousemove', e => {
   if (dragging) {
     paddle.x = Math.max(0, Math.min(canvas.width - paddle.width, e.offsetX - dragStartX));
   }
 });
-
 canvas.addEventListener('mouseup', () => dragging = false);
-
-// --- Responsive Canvas ---
+// --- Responsive Canvas (50% smaller) ---
 function resizeCanvas() {
-  let size = Math.min(window.innerWidth * 0.93, 400);
+  let size = Math.min(window.innerWidth * 0.465, 200);
   canvas.width = size;
   canvas.height = size;
-  paddle.y = canvas.height - 10;
+  paddle.y = canvas.height - 5;
 }
-
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
-
 // --- Ball Physics & Collision ---
 function updateBall() {
   if (gamePaused || !gameRunning) return;
@@ -161,14 +145,12 @@ function updateBall() {
     }
   }
 }
-
 function resetBall() {
   ball.x = canvas.width / 2;
   ball.y = canvas.height / 2;
   ball.vx = (Math.random() > 0.5 ? 1 : -1) * 4;
   ball.vy = -4;
 }
-
 function resetGame() {
   level = 1;
   lives = 3;
@@ -178,14 +160,13 @@ function resetGame() {
   updateUI();
   resetBall();
 }
-
 // --- Draw Game ---
 function drawGame() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   // Paddle
   ctx.fillStyle = '#ffdca3';
-  ctx.fillRect(paddle.x, paddle.y - 12, paddle.width, 14);
+  ctx.fillRect(paddle.x, paddle.y - 6, paddle.width, 7);
   
   // Ball
   ctx.beginPath();
@@ -196,38 +177,33 @@ function drawGame() {
   // Demo line
   if (isDrawingLine && lineStart) {
     ctx.strokeStyle = '#7d56e5';
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(lineStart.x, lineStart.y);
     ctx.lineTo(lineStart.x, canvas.height);
     ctx.stroke();
   }
 }
-
 // --- Animation Loop ---
 function gameLoop() {
   updateBall();
   drawGame();
   requestAnimationFrame(gameLoop);
 }
-
 function startLine() {
   if (isDrawingLine) return;
   isDrawingLine = true;
-  lineStart = { x: paddle.x + paddle.width/2, y: paddle.y - 12 };
+  lineStart = { x: paddle.x + paddle.width/2, y: paddle.y - 6 };
   setTimeout(() => { isDrawingLine = false; lineStart = null; }, 800);
 }
-
 // --- Farcaster Sharing ---
 shareBtn.addEventListener('click', () => {
   currentScore = level * 100 + (lives * 50);
   scoreDisplay.textContent = currentScore;
   farcasterModal.classList.add('active');
 });
-
 closeModal.addEventListener('click', () => { farcasterModal.classList.remove('active'); });
 cancelBtn.addEventListener('click', () => { farcasterModal.classList.remove('active'); });
-
 confirmShareBtn.addEventListener('click', async () => {
   const message = shareMessage.value || 'I just played JezzBall Clone!';
   try {
@@ -238,23 +214,26 @@ confirmShareBtn.addEventListener('click', async () => {
     alert('Failed to share. Please try again.');
   }
 });
-
 window.addEventListener('click', event => {
   if (event.target === farcasterModal) farcasterModal.classList.remove('active');
 });
-
-// --- Nostalgic Music ---
+// --- Nostalgic Background Music ---
 function playMusic() {
-  if(music) {
-    music.volume = 0.5;
-    music.play().catch(()=>{});
+  if (music) {
+    music.volume = 0.3;
+    music.loop = true;
+    const playPromise = music.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        console.log('Autoplay prevented, waiting for user interaction');
+      });
+    }
   }
 }
-
+// Trigger music on first user interaction
 document.addEventListener('touchstart', playMusic, { once: true });
 document.addEventListener('click', playMusic, { once: true });
 window.addEventListener('load', () => setTimeout(playMusic, 1500));
-
 initializeUI();
 updateUI();
 gameLoop();
