@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JezzBall Clone</title>
   <link rel="stylesheet" href="style.css" />
@@ -11,16 +11,32 @@
   <div id="nostalgic-banner" class="nostalgic-banner">
     <h2>Play and go back in time. Remember those beautiful days: slow internet, patient people—take it easy and play.</h2>
   </div>
+
   <h1>JezzBall Clone</h1>
-  <canvas id="gameCanvas" width="400" height="400"></canvas>
   
+  <!-- Game Canvas -->
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+  <!-- Game UI -->
   <div id="ui">
     <button id="splitBtn">Start Line</button>
     <span>Level: <span id="level">1</span></span>
     <span>Lives: <span id="lives">3</span></span>
     <span>Filled: <span id="filled">0%</span></span>
   </div>
-  
+
+  <!-- Control Instructions -->
+  <div id="instructions" class="instructions">
+    <h3>Controls</h3>
+    <ul>
+      <li><strong>Spacebar:</strong> Start game / Draw line</li>
+      <li><strong>Left Arrow or A:</strong> Move paddle left</li>
+      <li><strong>Right Arrow or D:</strong> Move paddle right</li>
+      <li><strong>Button Click:</strong> Start Line (alternative to spacebar)</li>
+    </ul>
+    <p><strong>Objective:</strong> Keep the ball bouncing with the paddle and fill the screen while clearing enemies. Each life lost when the ball falls below the paddle.</p>
+  </div>
+
   <!-- Optional Web3 Placeholder Buttons -->
   <div id="web3-section" class="web3-section">
     <button id="mintBtn" class="placeholder-btn" disabled title="Coming soon">Mint a Memory NFT (optional)</button>
@@ -30,18 +46,18 @@
   <!-- Farcaster Share Modal -->
   <div id="farcaster-modal" class="modal">
     <div class="modal-content">
-      <span class="close-btn" id="closeModal">&times;</span>
+      <span class="close-btn" id="closeModal">×</span>
       <h2>Share on Farcaster</h2>
       <div class="form-group">
         <label for="shareMessage">Message:</label>
-        <textarea id="shareMessage" class="share-input" placeholder="I just played JezzBall Clone!" rows="4"></textarea>
+        <textarea class="share-input" id="shareMessage" placeholder="I just played JezzBall Clone!" rows="4"></textarea>
       </div>
       <div class="form-group">
         <label for="scoreDisplay">Your Score: <span id="scoreDisplay">0</span></label>
       </div>
       <div class="button-group">
-        <button id="cancelBtn" class="btn-cancel">Cancel</button>
-        <button id="confirmShareBtn" class="btn-confirm">Share on Farcaster</button>
+        <button class="btn-cancel" id="cancelBtn">Cancel</button>
+        <button class="btn-confirm" id="confirmShareBtn">Share on Farcaster</button>
       </div>
     </div>
   </div>
