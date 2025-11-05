@@ -7,14 +7,27 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Nostalgic Banner Message -->
+  <div id="nostalgic-banner" class="nostalgic-banner">
+    <h2>Play and go back in time. Remember those beautiful days: slow internet, patient people—take it easy and play.</h2>
+  </div>
+
   <h1>JezzBall Clone</h1>
   <canvas id="gameCanvas" width="400" height="400"></canvas>
+  
   <div id="ui">
     <button id="splitBtn">Start Line</button>
     <span>Level: <span id="level">1</span></span>
     <span>Lives: <span id="lives">3</span></span>
     <span>Filled: <span id="filled">0%</span></span>
   </div>
+
+  <!-- Optional Web3 Placeholder Buttons -->
+  <div id="web3-section" class="web3-section">
+    <button id="mintBtn" class="placeholder-btn" disabled title="Coming soon">Mint a Memory NFT (optional)</button>
+    <button id="shareBtn" class="placeholder-btn" disabled title="Coming soon">Share on Farcaster (optional)</button>
+  </div>
+
   <script src="game.js"></script>
 </body>
 </html>
